@@ -1,0 +1,7 @@
+# CAN MUX Python Requirements for Raspberry Pi 5
+lgpio==0.2.2.0
+RPi.GPIO==0.7.1
+smbus2==0.4.3
+adafruit-circuitpython-busdevice==5.2.9
+pyserial==3.5
+psutil==5.9.6
