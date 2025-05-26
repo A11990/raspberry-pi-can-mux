@@ -5,7 +5,7 @@ Python port of FaBoGPIO_PCAL6408_Modified.cpp
 Exact equivalent of the Arduino library
 """
 
-import smbus
+import smbus2 as smbus
 import time
 
 # Register Addresses (from FaBoGPIO_PCAL6408_Modified.h)
