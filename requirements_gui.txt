@@ -1,0 +1,25 @@
+# Requirements pentru CAN MUX GUI Configurator (Windows)
+# Pentru rularea pe laptop/PC
+
+# GUI și interfață
+tkinter  # Inclus în Python standard
+
+# Networking
+socket   # Inclus în Python standard
+json     # Inclus în Python standard
+
+# SSH pentru setup automat Raspberry Pi
+paramiko>=2.12.0
+
+# Threading și regex
+threading  # Inclus în Python standard
+re         # Inclus în Python standard
+
+# File operations
+os         # Inclus în Python standard
+
+# Pentru build executable
+pyinstaller>=5.0
+
+# Optional - pentru debugging
+psutil>=5.9.0
