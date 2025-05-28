@@ -295,6 +295,15 @@ class CanMuxProgrammer:
         found_files = []
         missing_files = []
         
+        # Debug: List ALL files in directory
+        all_files = os.listdir(folder)
+        info_text = f"📁 Project: {os.path.basename(folder)}\n"
+        info_text += f"📍 Path: {folder}\n\n"
+        info_text += f"🔍 ALL files in directory ({len(all_files)}):\n"
+        for file in all_files:
+            info_text += f"   • {file}\n"
+        info_text += "\n"
+        
         for file in required_files:
             file_path = os.path.join(folder, file)
             if os.path.exists(file_path):
@@ -303,18 +312,16 @@ class CanMuxProgrammer:
                 missing_files.append(file)
         
         # Optional files
-        optional_files = ["serial_menu.py", "port_extender.py", "gpio_pi5.py"]
+        optional_files = ["serial_menu.py", "port_extender.py", "gpio_pi5.py", "FaBoGPIO_PCAL6408.py", "FaBoGPIO_PCAL6408_Modified.py"]
         for file in optional_files:
             file_path = os.path.join(folder, file)
-            if os.path.exists(file_path):
+            if os.path.exists(file_path) and file not in found_files:
                 found_files.append(file)
         
         # Update project info
         self.project_info.config(state=tk.NORMAL)
         self.project_info.delete(1.0, tk.END)
         
-        info_text = f"📁 Project: {os.path.basename(folder)}\n"
-        info_text += f"📍 Path: {folder}\n\n"
         info_text += f"✅ Found files ({len(found_files)}):\n"
         for file in found_files:
             info_text += f"   • {file}\n"
@@ -477,32 +484,44 @@ class CanMuxProgrammer:
             sftp = self.ssh_client.open_sftp()
             
             files_to_upload = []
-            for file in os.listdir(self.project_path.get()):
-                if file.endswith(('.py', '.txt', '.json', '.md')):
+            project_folder = self.project_path.get()
+            for file in os.listdir(project_folder):
+                if file.endswith(('.py', '.txt', '.json', '.md')) and not file.startswith('.'):
                     files_to_upload.append(file)
             
             total_files = len(files_to_upload)
             uploaded = 0
             
             for file in files_to_upload:
-                local_file = os.path.join(self.project_path.get(), file)
-                remote_file = f"{remote_path}/{file}"
-                
-                sftp.put(local_file, remote_file)
-                uploaded += 1
-                progress = 10 + (uploaded / total_files) * 60
-                self.root.after(0, lambda p=progress: self.upload_progress.config(value=p))
+                try:
+                    local_file = os.path.join(self.project_path.get(), file)
+                    remote_file = f"{remote_path}/{file}"
+                    
+                    # Debug: log each file being uploaded
+                    self.root.after(0, lambda f=file: self.set_status(f"Uploading: {f}", "orange"))
+                    
+                    if not os.path.exists(local_file):
+                        raise Exception(f"Local file not found: {local_file}")
+                    
+                    sftp.put(local_file, remote_file)
+                    uploaded += 1
+                    progress = 10 + (uploaded / total_files) * 60
+                    self.root.after(0, lambda p=progress: self.upload_progress.config(value=p))
+                    
+                except Exception as e:
+                    raise Exception(f"Failed to upload {file}: {str(e)}")
                 
             sftp.close()
             self.root.after(0, lambda: self.upload_progress.config(value=70))
             
             # Install dependencies
             self.root.after(0, lambda: self.set_status("Installing dependencies...", "orange"))
-            stdin, stdout, stderr = self.ssh_client.exec_command(f"cd {remote_path} && pip3 install --user -r requirements.txt")
+            stdin, stdout, stderr = self.ssh_client.exec_command(f"cd {remote_path} && python3 -m pip install --user -r requirements.txt")
             stdout.read()  # Wait for completion
             self.root.after(0, lambda: self.upload_progress.config(value=85))
             
             # Create systemd service
+            username = self.ssh_username.get()
             service_content = f"""[Unit]
 Description=CAN MUX Service
 After=network.target
@@ -510,7 +529,7 @@ Wants=network.target
 
 [Service]
 Type=simple
-User=pi
+User={username}
 WorkingDirectory={remote_path}
 ExecStart=/usr/bin/python3 {remote_path}/main.py
 Restart=always
